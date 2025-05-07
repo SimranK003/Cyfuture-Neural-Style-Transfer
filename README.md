@@ -1,27 +1,46 @@
+def get_style_model_and_losses(cnn, style_img, content_img,
+                                content_layers, style_layers):
+    cnn = copy.deepcopy(cnn)
 
-# Neural Style Transfer 🎨🧠
+    normalization = Normalization(cnn_normalization_mean, cnn_normalization_std)
 
-This project demonstrates Neural Style Transfer using PyTorch and Google Colab. It combines the **content of one image** with the **style of another** to create a stylized output image.
+    content_losses = []
+    style_losses = []
 
-## 🔧 Technologies Used
-- Python 🐍
-- PyTorch (VGG19 pretrained model)
-- Google Colab (GPU for faster processing)
-- PIL & Matplotlib (image handling & visualization)
+    model = nn.Sequential(normalization)
 
-## 📌 Steps Followed
-1. Load content and style images.
-2. Use a pretrained VGG19 model to extract content and style features.
-3. Define content loss and style loss.
-4. Optimize an input image to minimize the total loss.
-5. Generate the final stylized image.
+    i = 0
+    for layer in cnn.children():
+        if isinstance(layer, nn.Conv2d):
+            i += 1
+            name = 'conv_{}'.format(i)
+        elif isinstance(layer, nn.ReLU):
+            name = 'relu_{}'.format(i)
+            layer = nn.ReLU(inplace=False)
+        elif isinstance(layer, nn.MaxPool2d):
+            name = 'pool_{}'.format(i)
+        elif isinstance(layer, nn.BatchNorm2d):
+            name = 'bn_{}'.format(i)
+        else:
+            raise RuntimeError('Unrecognized layer: {}'.format(layer.__class__.__name__))
 
-## 📁 Files Included
-- `neural_style_transfer.ipynb`: Main Colab notebook with full implementation.
-- `README.md`: This file.
+        model.add_module(name, layer)
 
-## ✨ Example Output
-![image](https://github.com/user-attachments/assets/21c79546-dd2b-4935-a8bd-10256dfbe8b8)
+        if name in content_layers:
+            target = model(content_img).detach()
+            content_loss = ContentLoss(target)
+            model.add_module("content_loss_{}".format(i), content_loss)
+            content_losses.append(content_loss)
 
-## 👩‍💻 Author
-Simran Khanna
+        if name in style_layers:
+            target_feature = model(style_img).detach()
+            style_loss = StyleLoss(target_feature)
+            model.add_module("style_loss_{}".format(i), style_loss)
+            style_losses.append(style_loss)
+
+    for i in range(len(model) - 1, -1, -1):
+        if isinstance(model[i], ContentLoss) or isinstance(model[i], StyleLoss):
+            break
+    model = model[:i+1]
+
+    return model, style_losses, content_losses
