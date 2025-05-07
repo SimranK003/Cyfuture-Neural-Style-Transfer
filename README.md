@@ -21,7 +21,7 @@ This project demonstrates Neural Style Transfer using PyTorch and Google Colab. 
 - `README.md`: This file.
 
 ## ✨ Example Output
-(Insert your stylized output image here once available)
+![image](https://github.com/user-attachments/assets/21c79546-dd2b-4935-a8bd-10256dfbe8b8)
 
 ## 👩‍💻 Author
 Simran Khanna
